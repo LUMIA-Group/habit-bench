@@ -9,11 +9,13 @@
   <img src="https://img.shields.io/badge/sessions-37%2C152-0f766e?style=flat-square" alt="37,152 sessions">
   <img src="https://img.shields.io/badge/probes-3%2C328-7c3aed?style=flat-square" alt="3,328 probes">
   <img src="https://img.shields.io/badge/Python-3.11-3776ab?style=flat-square" alt="Python 3.11">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="Code license: Apache-2.0"></a>
   <img src="https://visitor-badge.laobi.icu/badge?page_id=Hollyming.habit-bench" alt="Visitors">
 </p>
 
 <p align="center">
   <a href="https://arxiv.org/pdf/2610.24520">Paper</a> ·
+  <a href="https://huggingface.co/datasets/hollyming/HABIT-Bench">Hugging Face</a> ·
   <a href="#overview">Overview</a> ·
   <a href="#datasets">Datasets</a> ·
   <a href="#quick-start">Quick start</a> ·
@@ -50,7 +52,9 @@ This repository provides the shared evaluator, memory-method implementations and
 | Travel | 30 | 4,092 | 650 |
 | **Total** | **114** | **37,152** | **3,328** |
 
-**Data availability:** the four-domain dataset package is distributed separately as supplementary material. Dataset files and model weights are not included in this repository.
+**Download:** the complete four-domain dataset is available at [hollyming/HABIT-Bench on Hugging Face](https://huggingface.co/datasets/hollyming/HABIT-Bench), including histories, probes, and gold annotations. This GitHub repository contains the evaluation code; dataset files and model weights are distributed separately.
+
+The Hugging Face release stores public data in `data/<domain>/` and evaluator-only answers in `gold/<domain>/`. The setup below creates the directory links expected by this evaluator:
 
 | File in each domain | Contents | Used by |
 |:--|:--|:--|
@@ -76,19 +80,50 @@ pip install -r requirements.txt
 
 ### 2. Prepare the data
 
-Extract the supplementary dataset package into a sibling `datasets/` directory:
+From the code repository root, download the complete release into a sibling `datasets/` directory. The `hf` CLI is included in the installed `huggingface-hub` dependency. This command pins the dataset revision for reproducibility:
+
+```bash
+hf download hollyming/HABIT-Bench --repo-type dataset \
+  --revision a1e4a529cb9ecbee8a8c6afe73eccdaf0a80b7b8 \
+  --local-dir ../datasets
+```
+
+Create the evaluator's `public/` and `private/` directory links. The downloaded JSONL files and license notices stay in place. Use a fresh `../datasets/` location if it already contains an earlier dataset layout.
+
+```bash
+python - <<'PY'
+from pathlib import Path
+
+root = Path("../datasets")
+for domain in ("food", "finance", "software", "travel"):
+    for view, source in (("public", "data"), ("private", "gold")):
+        link = root / domain / view
+        target = Path("..") / source / domain
+        if link.is_symlink() and link.readlink() == target:
+            continue
+        if link.exists() or link.is_symlink():
+            raise FileExistsError(f"Use a fresh dataset directory: {link}")
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(target, target_is_directory=True)
+PY
+```
+
+The resulting layout is:
 
 ```text
 workspace/
 ├── habit-bench/                 # This repository
 └── datasets/
-    ├── food/                   # public/ and private/
+    ├── data/                   # Downloaded histories and probes
+    ├── gold/                   # Downloaded answer keys
+    ├── licenses/               # Dataset and upstream license notices
+    ├── food/                   # public -> ../data/food; private -> ../gold/food
     ├── finance/
     ├── software/
     └── travel/
 ```
 
-Validate all four domains, then check one run without loading models or making API calls:
+Gold annotations are publicly downloadable, but are used only by the evaluator. Validate all four domains, then check one run without loading models or making API calls:
 
 ```bash
 python -m evaluation.validate \
@@ -229,8 +264,13 @@ secom/               SeCom implementation
 secom_adapter.py     SeCom adapter
 src/ · utils/        Shared method support
 LICENSES/            Retained upstream license notices
+LICENSE              Apache-2.0 license for original HABIT-Bench code
 ```
 
 ## Acknowledgments and licenses
 
-HABIT-Bench integrates work from the memory methods listed above. Their applicable license notices are retained in [`LICENSES/`](LICENSES/) and the corresponding source files. Consult those notices when reusing individual components. Dataset source material is subject to its own terms, described in the separate dataset package.
+The original HABIT-Bench code in this repository is licensed under the [Apache License 2.0](LICENSE).
+
+HABIT-Bench integrates work from the memory methods listed above. Third-party components retain their respective licenses and copyright notices in [`LICENSES/`](LICENSES/) and the corresponding source files.
+
+The dataset has [domain-specific licenses](https://huggingface.co/datasets/hollyming/HABIT-Bench/blob/main/LICENSE): MIT for Food, CDLA-Permissive-1.0 for Finance and Software, and CC BY 4.0 for Travel. Refer to the dataset's license and attribution files when using or redistributing it. The code license does not change the licensing terms of the dataset or figures reproduced from the paper.
