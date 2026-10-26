@@ -67,7 +67,7 @@ The histories are synthetic. A probe's visible history is restricted to its user
 The supplied dependency file records the main evaluation environment: **Python 3.11, Linux, and CUDA**. Use a separate environment for the model server.
 
 ```bash
-git clone https://github.com/Hollyming/habit-bench.git
+git clone https://github.com/LUMIA-Group/habit-bench.git
 cd habit-bench
 python3.11 -m venv .venv
 source .venv/bin/activate
